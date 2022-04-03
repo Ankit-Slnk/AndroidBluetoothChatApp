@@ -8,12 +8,7 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Build;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
-import android.provider.Settings;
 
 import androidx.core.app.ActivityCompat;
 
@@ -26,8 +21,7 @@ public class ChatController {
     private static final String APP_NAME = "BluetoothChatApp";
     private static final UUID MY_UUID = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
 
-    private final BluetoothAdapter bluetoothAdapter;
-    private final Handler handler;
+    private BluetoothAdapter bluetoothAdapter;
     private AcceptThread acceptThread;
     private ConnectThread connectThread;
     private ReadWriteThread connectedThread;
@@ -39,19 +33,21 @@ public class ChatController {
     static final int STATE_CONNECTED = 3;
     Context context;
 
-    public ChatController(Context context, Handler handler) {
+    private static final ChatController ourInstance = new ChatController();
+
+    public static ChatController getInstance() {
+        return ourInstance;
+    }
+
+    public void init(Context context) {
         this.context = context;
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         state = STATE_NONE;
-
-        this.handler = handler;
     }
 
     // Set the current state of the chat connection
     private synchronized void setState(int state) {
         this.state = state;
-
-        handler.obtainMessage(MainActivity.MESSAGE_STATE_CHANGE, state, -1).sendToTarget();
     }
 
     // get current connection state
@@ -125,12 +121,9 @@ public class ChatController {
         connectedThread = new ReadWriteThread(socket);
         connectedThread.start();
 
-        // Send the name of the connected device back to the UI Activity
-        Message msg = handler.obtainMessage(MainActivity.MESSAGE_DEVICE_OBJECT);
-        Bundle bundle = new Bundle();
-        bundle.putParcelable(MainActivity.DEVICE_OBJECT, device);
-        msg.setData(bundle);
-        handler.sendMessage(msg);
+        Intent i = new Intent("MESSAGE_DEVICE_OBJECT");
+        i.putExtra("DEVICE_OBJECT", device);
+        context.sendBroadcast(i);
 
         setState(STATE_CONNECTED);
     }
@@ -165,22 +158,18 @@ public class ChatController {
     }
 
     private void connectionFailed() {
-        Message msg = handler.obtainMessage(MainActivity.MESSAGE_TOAST);
-        Bundle bundle = new Bundle();
-        bundle.putString("toast", "Unable to connect device");
-        msg.setData(bundle);
-        handler.sendMessage(msg);
+        Intent i = new Intent("MESSAGE_TOAST");
+        i.putExtra("toast", "Unable to connect device");
+        context.sendBroadcast(i);
 
         // Start the service over to restart listening mode
         ChatController.this.start();
     }
 
     private void connectionLost() {
-        Message msg = handler.obtainMessage(MainActivity.MESSAGE_TOAST);
-        Bundle bundle = new Bundle();
-        bundle.putString("toast", "Device connection was lost");
-        msg.setData(bundle);
-        handler.sendMessage(msg);
+        Intent i = new Intent("MESSAGE_TOAST");
+        i.putExtra("toast", "Device connection was lost");
+        context.sendBroadcast(i);
 
         // Start the service over to restart listening mode
         ChatController.this.start();
@@ -197,7 +186,7 @@ public class ChatController {
                     return;
                 }
                 tmp = bluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(APP_NAME, MY_UUID);
-            } catch (IOException ex) {
+            } catch (Exception ex) {
                 ex.printStackTrace();
             }
             serverSocket = tmp;
@@ -209,7 +198,7 @@ public class ChatController {
             while (state != STATE_CONNECTED) {
                 try {
                     socket = serverSocket.accept();
-                } catch (IOException e) {
+                } catch (Exception e) {
                     break;
                 }
 
@@ -228,7 +217,7 @@ public class ChatController {
                                 // new socket.
                                 try {
                                     socket.close();
-                                } catch (IOException e) {
+                                } catch (Exception e) {
                                 }
                                 break;
                         }
@@ -240,7 +229,7 @@ public class ChatController {
         public void cancel() {
             try {
                 serverSocket.close();
-            } catch (IOException e) {
+            } catch (Exception e) {
             }
         }
     }
@@ -258,7 +247,7 @@ public class ChatController {
                     return;
                 }
                 tmp = device.createInsecureRfcommSocketToServiceRecord(MY_UUID);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
             socket = tmp;
@@ -276,10 +265,10 @@ public class ChatController {
             // Make a connection to the BluetoothSocket
             try {
                 socket.connect();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 try {
                     socket.close();
-                } catch (IOException e2) {
+                } catch (Exception e2) {
                 }
                 connectionFailed();
                 return;
@@ -297,7 +286,7 @@ public class ChatController {
         public void cancel() {
             try {
                 socket.close();
-            } catch (IOException e) {
+            } catch (Exception e) {
             }
         }
     }
@@ -316,7 +305,7 @@ public class ChatController {
             try {
                 tmpIn = socket.getInputStream();
                 tmpOut = socket.getOutputStream();
-            } catch (IOException e) {
+            } catch (Exception e) {
             }
 
             inputStream = tmpIn;
@@ -333,10 +322,11 @@ public class ChatController {
                     // Read from the InputStream
                     bytes = inputStream.read(buffer);
 
-                    // Send the obtained bytes to the UI Activity
-                    handler.obtainMessage(MainActivity.MESSAGE_READ, bytes, -1,
-                            buffer).sendToTarget();
-                } catch (IOException e) {
+                    String readMessage = new String(buffer, 0, bytes);
+                    Intent i = new Intent("MESSAGE_READ");
+                    i.putExtra("message", readMessage);
+                    context.sendBroadcast(i);
+                } catch (Exception e) {
                     connectionLost();
                     // Start the service over to restart listening mode
                     ChatController.this.start();
@@ -349,16 +339,19 @@ public class ChatController {
         public void write(byte[] buffer) {
             try {
                 outputStream.write(buffer);
-                handler.obtainMessage(MainActivity.MESSAGE_WRITE, -1, -1,
-                        buffer).sendToTarget();
-            } catch (IOException e) {
+                String readMessage = new String(buffer, 0, buffer.length);
+                Intent i = new Intent("MESSAGE_WRITE");
+                i.putExtra("message", readMessage);
+                context.sendBroadcast(i);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
 
         public void cancel() {
             try {
                 bluetoothSocket.close();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
