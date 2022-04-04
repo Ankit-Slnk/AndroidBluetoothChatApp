@@ -1,4 +1,4 @@
-package com.ankit.bluetoothchatapp;
+package com.ankit.bluetoothchatapp.screens;
 
 import android.Manifest;
 import android.content.Intent;
@@ -8,6 +8,8 @@ import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+
+import com.ankit.bluetoothchatapp.R;
 
 public class SplashActivity extends AppCompatActivity {
 

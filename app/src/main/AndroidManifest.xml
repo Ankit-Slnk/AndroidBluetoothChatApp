@@ -15,11 +15,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BluetoothChatApp">
         <activity
-            android:name=".DevicesActivity"
+            android:name=".screens.DevicesActivity"
             android:exported="true"
             android:windowSoftInputMode="stateAlwaysHidden" />
         <activity
-            android:name=".SplashActivity"
+            android:name=".screens.SplashActivity"
             android:exported="true"
             android:windowSoftInputMode="stateAlwaysHidden">
             <intent-filter>
@@ -29,7 +29,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ChatActivity"
+            android:name=".screens.ChatActivity"
             android:exported="true"
             android:windowSoftInputMode="stateAlwaysHidden" />
     </application>

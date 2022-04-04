@@ -1,4 +1,4 @@
-package com.ankit.bluetoothchatapp;
+package com.ankit.bluetoothchatapp.screens;
 
 import android.Manifest;
 import android.app.Activity;
@@ -25,6 +25,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 
+import com.ankit.bluetoothchatapp.R;
+import com.ankit.bluetoothchatapp.controller.ChatController;
+import com.ankit.bluetoothchatapp.helper.DatabaseHelper;
+import com.ankit.bluetoothchatapp.models.Users;
+
+import java.util.List;
 import java.util.Set;
 
 public class DevicesActivity extends AppCompatActivity {
@@ -32,11 +38,12 @@ public class DevicesActivity extends AppCompatActivity {
     private BluetoothAdapter bluetoothAdapter;
     private static final int REQUEST_ENABLE_BLUETOOTH = 1;
     Button btnScanForDevices;
-    ListView pairedDeviceList; //, discoveredDeviceList;
-    //    private ArrayAdapter<String> discoveredDevicesAdapter;
+    ListView pairedDeviceList, chatsList;
+    private ArrayAdapter<String> discoveredDevicesAdapter;
     private ChatController chatController;
     private BluetoothDevice connectingDevice;
     LinearLayout llProgressBar;
+    DatabaseHelper db = new DatabaseHelper(this);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,7 +55,7 @@ public class DevicesActivity extends AppCompatActivity {
         btnScanForDevices = findViewById(R.id.btnScanForDevices);
         pairedDeviceList = findViewById(R.id.pairedDeviceList);
         llProgressBar = findViewById(R.id.llProgressBar);
-//        discoveredDeviceList = findViewById(R.id.discoveredDeviceList);
+        chatsList = findViewById(R.id.chatsList);
 
         //check device support bluetooth or not
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -65,6 +72,29 @@ public class DevicesActivity extends AppCompatActivity {
                 scanForDevices();
             }
         });
+
+        discoveredDevicesAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
+        chatsList.setAdapter(discoveredDevicesAdapter);
+
+        getUsers();
+    }
+
+    void getUsers(){
+        List<Users> users = db.getAllUsers();
+        discoveredDevicesAdapter.clear();
+        discoveredDevicesAdapter.notifyDataSetChanged();
+
+        for (int i = 0; i < users.size(); i++) {
+            discoveredDevicesAdapter.add(users.get(i).name + "\n" + users.get(i).address);
+        }
+
+        chatsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                llProgressBar.setVisibility(View.VISIBLE);
+                connectToDevice(discoveredDevicesAdapter.getItem(i).split("\n")[1]);
+            }
+        });
     }
 
     void scanForDevices() {
@@ -78,10 +108,8 @@ public class DevicesActivity extends AppCompatActivity {
 
         //Initializing bluetooth adapters
         ArrayAdapter<String> pairedDevicesAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
-//        discoveredDevicesAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
 
         pairedDeviceList.setAdapter(pairedDevicesAdapter);
-//        discoveredDeviceList.setAdapter(discoveredDevicesAdapter);
 
         // Register for broadcasts when a device is discovered
 //        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
@@ -119,20 +147,6 @@ public class DevicesActivity extends AppCompatActivity {
             }
 
         });
-
-//        discoveredDeviceList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-//            @Override
-//            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ActivityCompat.checkSelfPermission(DevicesActivity.this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-//                    return;
-//                }
-//                bluetoothAdapter.cancelDiscovery();
-//                String info = ((TextView) view).getText().toString();
-//                String address = info.substring(info.length() - 17);
-//
-//                connectToDevice(address);
-//            }
-//        });
     }
 
     private void connectToDevice(String deviceAddress) {
@@ -183,6 +197,7 @@ public class DevicesActivity extends AppCompatActivity {
                 chatController.start();
             }
         }
+        getUsers();
     }
 
     @Override
@@ -223,8 +238,16 @@ public class DevicesActivity extends AppCompatActivity {
                     Toast.makeText(getApplicationContext(), "Connected to " + connectingDevice.getName(), Toast.LENGTH_SHORT).show();
                     unregisterReceiver(messageDeviceObjectReceiver);
                     llProgressBar.setVisibility(View.GONE);
+
+                    Users user = db.getUser(connectingDevice.getAddress());
+
+                    if (user == null) {
+                        user = db.getUser(db.addUser(connectingDevice.getName(), connectingDevice.getAddress()));
+                    }
+
                     Intent i = new Intent(DevicesActivity.this, ChatActivity.class);
                     i.putExtra("connectingDevice", connectingDevice);
+                    i.putExtra("user", user);
                     startActivity(i);
                 }
             } else {
@@ -232,8 +255,16 @@ public class DevicesActivity extends AppCompatActivity {
                 Toast.makeText(getApplicationContext(), "Connected to " + connectingDevice.getName(), Toast.LENGTH_SHORT).show();
                 unregisterReceiver(messageDeviceObjectReceiver);
                 llProgressBar.setVisibility(View.GONE);
+
+                Users user = db.getUser(connectingDevice.getAddress());
+
+                if (user == null) {
+                    user = db.getUser(db.addUser(connectingDevice.getName(), connectingDevice.getAddress()));
+                }
+
                 Intent i = new Intent(DevicesActivity.this, ChatActivity.class);
                 i.putExtra("connectingDevice", connectingDevice);
+                i.putExtra("user", user);
                 startActivity(i);
             }
         }

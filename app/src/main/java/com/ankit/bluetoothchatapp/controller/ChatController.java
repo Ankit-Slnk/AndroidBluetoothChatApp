@@ -1,4 +1,4 @@
-package com.ankit.bluetoothchatapp;
+package com.ankit.bluetoothchatapp.controller;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
@@ -12,7 +12,6 @@ import android.os.Build;
 
 import androidx.core.app.ActivityCompat;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.UUID;
@@ -27,10 +26,10 @@ public class ChatController {
     private ReadWriteThread connectedThread;
     private int state;
 
-    static final int STATE_NONE = 0;
+    public static final int STATE_NONE = 0;
     static final int STATE_LISTEN = 1;
     static final int STATE_CONNECTING = 2;
-    static final int STATE_CONNECTED = 3;
+    public static final int STATE_CONNECTED = 3;
     Context context;
 
     private static final ChatController ourInstance = new ChatController();

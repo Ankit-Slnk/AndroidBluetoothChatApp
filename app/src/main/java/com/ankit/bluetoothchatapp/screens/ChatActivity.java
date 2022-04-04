@@ -1,4 +1,4 @@
-package com.ankit.bluetoothchatapp;
+package com.ankit.bluetoothchatapp.screens;
 
 import android.Manifest;
 import android.bluetooth.BluetoothDevice;
@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -18,19 +19,26 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 
+import com.ankit.bluetoothchatapp.R;
+import com.ankit.bluetoothchatapp.controller.ChatController;
+import com.ankit.bluetoothchatapp.helper.DatabaseHelper;
+import com.ankit.bluetoothchatapp.models.Chats;
+import com.ankit.bluetoothchatapp.models.Users;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class ChatActivity extends AppCompatActivity {
 
     private ListView listView;
-    private TextInputLayout inputLayout;
+    private EditText inputLayout;
     private ArrayAdapter<String> chatAdapter;
     private ArrayList<String> chatMessages;
-
     private ChatController chatController;
     private BluetoothDevice connectingDevice;
+    Users user;
+    DatabaseHelper db = new DatabaseHelper(this);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,6 +46,7 @@ public class ChatActivity extends AppCompatActivity {
         setContentView(R.layout.activity_chat);
 
         connectingDevice = getIntent().getParcelableExtra("connectingDevice");
+        user = (Users) getIntent().getSerializableExtra("user");
 
         setToolbar();
 
@@ -45,15 +54,14 @@ public class ChatActivity extends AppCompatActivity {
         inputLayout = findViewById(R.id.input_layout);
         View btnSend = findViewById(R.id.btn_send);
 
-
         btnSend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (inputLayout.getEditText().getText().toString().equals("")) {
+                if (inputLayout.getText().toString().equals("")) {
                     Toast.makeText(ChatActivity.this, "Please input some texts", Toast.LENGTH_SHORT).show();
                 } else {
-                    sendMessage(inputLayout.getEditText().getText().toString());
-                    inputLayout.getEditText().setText("");
+                    sendMessage(inputLayout.getText().toString());
+                    inputLayout.setText("");
                 }
             }
         });
@@ -67,6 +75,26 @@ public class ChatActivity extends AppCompatActivity {
         registerReceiver(messageWriteReceiver, new IntentFilter("MESSAGE_WRITE"));
         registerReceiver(messageToastReceiver, new IntentFilter("MESSAGE_TOAST"));
         registerReceiver(messageDeviceObjectReceiver, new IntentFilter("MESSAGE_DEVICE_OBJECT"));
+
+        getChats();
+    }
+
+    void getChats() {
+        List<Chats> chatsList = db.getUserChats(user.id + "");
+        chatAdapter.clear();
+        chatAdapter.notifyDataSetChanged();
+        for (int i = 0; i < chatsList.size(); i++) {
+            chatMessages.add(chatsList.get(i).message);
+            chatAdapter.notifyDataSetChanged();
+        }
+
+        listView.post(new Runnable() {
+            @Override
+            public void run() {
+                // Select the last row so it will scroll into view...
+                listView.setSelection(chatAdapter.getCount() - 1);
+            }
+        });
     }
 
     @Override
@@ -99,8 +127,8 @@ public class ChatActivity extends AppCompatActivity {
     private final BroadcastReceiver messageWriteReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            chatMessages.add("Me:  " + intent.getStringExtra("message"));
-            chatAdapter.notifyDataSetChanged();
+            db.addChat("Me:  " + intent.getStringExtra("message"), user.id + "", "1");
+            getChats();
         }
     };
 
@@ -109,12 +137,12 @@ public class ChatActivity extends AppCompatActivity {
         public void onReceive(Context context, Intent intent) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
-                    chatMessages.add(connectingDevice.getName() + ":  " + intent.getStringExtra("message"));
-                    chatAdapter.notifyDataSetChanged();
+                    db.addChat(connectingDevice.getName() + ":  " + intent.getStringExtra("message"), user.id + "", "0");
+                    getChats();
                 }
             } else {
-                chatMessages.add(connectingDevice.getName() + ":  " + intent.getStringExtra("message"));
-                chatAdapter.notifyDataSetChanged();
+                db.addChat(connectingDevice.getName() + ":  " + intent.getStringExtra("message"), user.id + "", "0");
+                getChats();
             }
         }
     };
