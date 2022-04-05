@@ -15,15 +15,7 @@
         <ListView
             android:id="@+id/pairedDeviceList"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-
-        <Button
-            android:id="@+id/btnScanForDevices"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="8dp"
-            android:text="Scan for devices" />
+            android:layout_height="match_parent" />
 
     </LinearLayout>
 

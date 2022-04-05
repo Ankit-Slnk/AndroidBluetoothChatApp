@@ -36,7 +36,6 @@ public class DevicesActivity extends AppCompatActivity {
 
     private BluetoothAdapter bluetoothAdapter;
     private static final int REQUEST_ENABLE_BLUETOOTH = 1;
-    Button btnScanForDevices;
     ListView pairedDeviceList;
     private ChatController chatController;
     private BluetoothDevice connectingDevice;
@@ -50,7 +49,6 @@ public class DevicesActivity extends AppCompatActivity {
 
         setToolbar();
 
-        btnScanForDevices = findViewById(R.id.btnScanForDevices);
         pairedDeviceList = findViewById(R.id.pairedDeviceList);
         llProgressBar = findViewById(R.id.llProgressBar);
 
@@ -61,13 +59,6 @@ public class DevicesActivity extends AppCompatActivity {
         }
 
         scanForDevices();
-
-        btnScanForDevices.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                scanForDevices();
-            }
-        });
     }
 
     void scanForDevices() {

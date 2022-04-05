@@ -11,11 +11,10 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -41,6 +40,7 @@ public class ChatUsersActivity extends AppCompatActivity {
     private ArrayAdapter<String> discoveredDevicesAdapter;
     private ChatController chatController;
     private BluetoothDevice connectingDevice;
+    Button btnScanForDevices;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +51,14 @@ public class ChatUsersActivity extends AppCompatActivity {
 
         chatsList = findViewById(R.id.chatsList);
         llProgressBar = findViewById(R.id.llProgressBar);
+        btnScanForDevices = findViewById(R.id.btnScanForDevices);
+
+        btnScanForDevices.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(ChatUsersActivity.this, DevicesActivity.class));
+            }
+        });
 
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (bluetoothAdapter == null) {
@@ -192,28 +200,9 @@ public class ChatUsersActivity extends AppCompatActivity {
             chatController.stop();
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.bluetooth_devices, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-        switch (id) {
-            case R.id.bluetooth_devices:
-                startActivity(new Intent(ChatUsersActivity.this, DevicesActivity.class));
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
-        }
-    }
-
     private void setToolbar() {
         Toolbar toolbar = findViewById(R.id.toolbar);
-        toolbar.setTitle("Users");
-        setSupportActionBar(toolbar);
+        toolbar.setTitle("Chats");
 //        toolbar.setNavigationIcon(R.drawable.ic_back);
 //        toolbar.setNavigationOnClickListener(new View.OnClickListener() {
 //            @Override
