@@ -3,6 +3,7 @@ package com.ankit.bluetoothchatapp.screens;
 import android.Manifest;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -11,11 +12,9 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -79,7 +78,9 @@ public class DevicesActivity extends AppCompatActivity {
 
         if (pairedDevices.size() > 0) {
             for (BluetoothDevice device : pairedDevices) {
-                pairedDevicesAdapter.add(device.getName() + "\n" + device.getAddress());
+                if (device.getBluetoothClass().getDeviceClass() == BluetoothClass.Device.PHONE_SMART) {
+                    pairedDevicesAdapter.add(device.getName() + "\n" + device.getAddress());
+                }
             }
             pairedDeviceList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
