@@ -65,7 +65,7 @@ public class SplashActivity extends AppCompatActivity {
     }
 
     void gotoHome() {
-        startActivity(new Intent(SplashActivity.this, DevicesActivity.class));
+        startActivity(new Intent(SplashActivity.this, ChatUsersActivity.class));
         finish();
     }
 }

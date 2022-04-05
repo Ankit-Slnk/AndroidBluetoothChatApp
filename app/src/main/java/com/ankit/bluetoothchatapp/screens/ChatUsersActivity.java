@@ -11,14 +11,13 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -30,28 +29,27 @@ import com.ankit.bluetoothchatapp.controller.ChatController;
 import com.ankit.bluetoothchatapp.helper.DatabaseHelper;
 import com.ankit.bluetoothchatapp.models.Users;
 
-import java.util.Set;
+import java.util.List;
 
-public class DevicesActivity extends AppCompatActivity {
+public class ChatUsersActivity extends AppCompatActivity {
 
     private BluetoothAdapter bluetoothAdapter;
     private static final int REQUEST_ENABLE_BLUETOOTH = 1;
-    Button btnScanForDevices;
-    ListView pairedDeviceList;
-    private ChatController chatController;
-    private BluetoothDevice connectingDevice;
+    ListView chatsList;
     LinearLayout llProgressBar;
     DatabaseHelper db = new DatabaseHelper(this);
+    private ArrayAdapter<String> discoveredDevicesAdapter;
+    private ChatController chatController;
+    private BluetoothDevice connectingDevice;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_devices);
+        setContentView(R.layout.activity_chat_users);
 
         setToolbar();
 
-        btnScanForDevices = findViewById(R.id.btnScanForDevices);
-        pairedDeviceList = findViewById(R.id.pairedDeviceList);
+        chatsList = findViewById(R.id.chatsList);
         llProgressBar = findViewById(R.id.llProgressBar);
 
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -60,17 +58,6 @@ public class DevicesActivity extends AppCompatActivity {
             finish();
         }
 
-        scanForDevices();
-
-        btnScanForDevices.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                scanForDevices();
-            }
-        });
-    }
-
-    void scanForDevices() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
@@ -79,33 +66,30 @@ public class DevicesActivity extends AppCompatActivity {
         }
         bluetoothAdapter.startDiscovery();
 
-        ArrayAdapter<String> pairedDevicesAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
+        discoveredDevicesAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
+        chatsList.setAdapter(discoveredDevicesAdapter);
 
-        pairedDeviceList.setAdapter(pairedDevicesAdapter);
+        getUsers();
+    }
 
-        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        Set<BluetoothDevice> pairedDevices = bluetoothAdapter.getBondedDevices();
+    void getUsers() {
+        List<Users> users = db.getAllUsers();
+        discoveredDevicesAdapter.clear();
+        discoveredDevicesAdapter.notifyDataSetChanged();
 
-        if (pairedDevices.size() > 0) {
-            for (BluetoothDevice device : pairedDevices) {
-                pairedDevicesAdapter.add(device.getName() + "\n" + device.getAddress());
+        if (users.size() > 0) {
+            for (int i = 0; i < users.size(); i++) {
+                discoveredDevicesAdapter.add(users.get(i).name + "\n" + users.get(i).address);
             }
-            pairedDeviceList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            chatsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
-                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ActivityCompat.checkSelfPermission(DevicesActivity.this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-                        return;
-                    }
+                public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                     llProgressBar.setVisibility(View.VISIBLE);
-                    bluetoothAdapter.cancelDiscovery();
-                    String info = ((TextView) view).getText().toString();
-                    String address = info.substring(info.length() - 17);
-
-                    connectToDevice(address);
+                    connectToDevice(discoveredDevicesAdapter.getItem(i).split("\n")[1]);
                 }
             });
         } else {
-            pairedDevicesAdapter.add("No devices have been paired");
+            discoveredDevicesAdapter.add("No Chat Users");
         }
     }
 
@@ -125,6 +109,7 @@ public class DevicesActivity extends AppCompatActivity {
             case REQUEST_ENABLE_BLUETOOTH:
                 if (resultCode == Activity.RESULT_OK) {
                     chatController = ChatController.getInstance();
+                    chatController.init(this);
                 } else {
                     Toast.makeText(this, "Bluetooth still disabled, turn off application!", Toast.LENGTH_SHORT).show();
                     finish();
@@ -143,6 +128,7 @@ public class DevicesActivity extends AppCompatActivity {
             startActivityForResult(enableIntent, REQUEST_ENABLE_BLUETOOTH);
         } else {
             chatController = ChatController.getInstance();
+            chatController.init(this);
         }
     }
 
@@ -155,13 +141,14 @@ public class DevicesActivity extends AppCompatActivity {
                 chatController.start();
             }
         }
+        getUsers();
     }
 
     private final BroadcastReceiver messageDeviceObjectReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (ActivityCompat.checkSelfPermission(DevicesActivity.this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                if (ActivityCompat.checkSelfPermission(ChatUsersActivity.this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
                     connectingDevice = intent.getParcelableExtra("DEVICE_OBJECT");
                     Toast.makeText(getApplicationContext(), "Connected to " + connectingDevice.getName(), Toast.LENGTH_SHORT).show();
                     unregisterReceiver(messageDeviceObjectReceiver);
@@ -173,7 +160,7 @@ public class DevicesActivity extends AppCompatActivity {
                         user = db.getUser(db.addUser(connectingDevice.getName(), connectingDevice.getAddress()));
                     }
 
-                    Intent i = new Intent(DevicesActivity.this, ChatActivity.class);
+                    Intent i = new Intent(ChatUsersActivity.this, ChatActivity.class);
                     i.putExtra("connectingDevice", connectingDevice);
                     i.putExtra("user", user);
                     startActivity(i);
@@ -190,7 +177,7 @@ public class DevicesActivity extends AppCompatActivity {
                     user = db.getUser(db.addUser(connectingDevice.getName(), connectingDevice.getAddress()));
                 }
 
-                Intent i = new Intent(DevicesActivity.this, ChatActivity.class);
+                Intent i = new Intent(ChatUsersActivity.this, ChatActivity.class);
                 i.putExtra("connectingDevice", connectingDevice);
                 i.putExtra("user", user);
                 startActivity(i);
@@ -198,15 +185,41 @@ public class DevicesActivity extends AppCompatActivity {
         }
     };
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (chatController != null)
+            chatController.stop();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.bluetooth_devices, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        switch (id) {
+            case R.id.bluetooth_devices:
+                startActivity(new Intent(ChatUsersActivity.this, DevicesActivity.class));
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
     private void setToolbar() {
         Toolbar toolbar = findViewById(R.id.toolbar);
-        toolbar.setTitle("Paired Devices");
-        toolbar.setNavigationIcon(R.drawable.ic_back);
-        toolbar.setNavigationOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
-        });
+        toolbar.setTitle("Users");
+        setSupportActionBar(toolbar);
+//        toolbar.setNavigationIcon(R.drawable.ic_back);
+//        toolbar.setNavigationOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                finish();
+//            }
+//        });
     }
 }
